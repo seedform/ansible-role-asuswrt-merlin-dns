@@ -1,0 +1,12 @@
+---
+
+- name: Deploy DNS configuration
+  notify: Restart dnsmasq
+  vars:
+    ansible_ssh_use_tty: false  # \n as line-endings instead of \r\n
+  block:
+    - name: Deploy main configuration file
+      ansible.builtin.import_tasks: 1-config.yml
+
+    - name: Expose dns entries on selected bridges/vlans
+      ansible.builtin.import_tasks: 2-bridges.yml

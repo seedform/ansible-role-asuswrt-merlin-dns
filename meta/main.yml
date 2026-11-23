@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  role_name: asuswrt_merlin_dns
+  author: Seedform
+  description: >-
+    Configure explicit domain name entries and expose them to selected
+    VLANs on Asus routers running Asuswrt-Merlin firmware.
+  license: MIT
+  min_ansible_version: "2.14"
+  galaxy_tags:
+    - asuswrt
+    - merlin
+    - router
+    - dns
+    - dnsmasq
+
+dependencies: []

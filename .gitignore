@@ -1,0 +1,40 @@
+# Ansible
+*.retry
+.ansible/
+roles/*
+!roles/.gitkeep
+collections/
+
+# Molecule
+.molecule/
+.cache/
+.pytest_cache/
+.tox/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python
+.venv/
+venv/
+env/
+ENV/
+
+# Secrets
+*vault*
+!*.vault.example
+group_vars/all/vault.yml
+host_vars/*/vault.yml
+*.pem
+*.key
+.env
+
+# Other
+.DS_Store
+.AppleDouble
+.LSOverride
+*.swp
+*.swo
+*~
+.vscode/
+.idea/

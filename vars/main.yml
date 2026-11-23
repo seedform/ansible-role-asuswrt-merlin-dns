@@ -1,0 +1,4 @@
+---
+
+_dns_conf_dir: /jffs/configs
+_dns_conf_path: "{{ _dns_conf_dir }}/dnsmasq.conf.add"

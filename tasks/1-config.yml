@@ -1,0 +1,40 @@
+---
+- name: Generate effective DNS configuration
+  ansible.builtin.set_fact:
+    _dns_add_conf_wanted: |
+      {% for entry in dns_entries %}
+      address=/{{ entry.domain_names | join('/') }}/{{ entry.target }}
+      {% endfor %}
+      {% for group in dns_inventory_groups -%}
+      {% for hostname in groups[group] %}
+      address=/{{ hostname }}{{ '.%s' | format(dns_network_domain) if dns_network_domain else '' }}/{{ hostvars[hostname]['ansible_host'] }}
+      {% endfor %}
+      {% endfor %}
+  check_mode: false
+
+- name: Get current config  # returns empty when file doesn't exist
+  ansible.builtin.raw: >
+    test -f {{ _dns_conf_path }} && cat {{ _dns_conf_path }} || true
+  register: _dns_add_conf_existing_cmd
+  changed_when: false
+  check_mode: false
+
+- name: Set config update flag
+  ansible.builtin.set_fact:
+    _dns_conf_needs_update: >
+      {{ _dns_add_conf_wanted | default('', true)
+        != _dns_add_conf_existing_cmd.stdout }}
+
+- name: Show if config has changed
+  ansible.builtin.debug:
+    msg: "{{ 'changed' if _dns_conf_needs_update else 'no changes' }}"
+  changed_when: _dns_conf_needs_update
+  when: ansible_check_mode
+
+- name: Deploy config
+  ansible.builtin.raw: |
+    cat <<EOF > {{ _dns_conf_path }}
+    {{ _dns_add_conf_wanted -}}
+    EOF
+  changed_when: true
+  when: _dns_conf_needs_update

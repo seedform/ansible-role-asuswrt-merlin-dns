@@ -1,0 +1,19 @@
+---
+
+dns_network_domain: ~
+
+# generate dns entries from inventory hosts
+dns_inventory_groups: []
+  # - site1
+  # - site2
+
+# additional bridge devices to serve DNS entries on
+dns_add_bridges: []
+  # - br52
+
+# explicit name assignments
+dns_entries: []
+  # - domain_names:
+  #     - apps.internal
+  #     - infra.internal
+  #   target: "10.0.0.1"

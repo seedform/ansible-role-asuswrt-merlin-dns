@@ -1,0 +1,74 @@
+---
+
+- name: Find each additional bridge's config file
+  ansible.builtin.raw: >-
+    cd /etc &&
+    find . -name 'dnsmasq-*.conf' -exec grep -lx 'interface={{ item }}' {} +
+  loop: "{{ dns_add_bridges }}"
+  register: _dns_confs_find_cmd
+  changed_when: false
+  failed_when: _dns_confs_find_cmd.stdout_lines | length != 1
+  check_mode: false
+
+- name: Find existing dnsmasq-*.add.conf symbolic links
+  ansible.builtin.raw: >-
+    cd {{ _dns_conf_dir }} &&
+    find . -name 'dnsmasq-*.conf.add'
+  register: _dns_slinks_find_cmd
+  changed_when: false
+  check_mode: false
+
+- name: Generate wanted and found dnsmasq-*.add.conf link names
+  ansible.builtin.set_fact:
+    _dns_sdn_links_wanted: >-
+      {{ _dns_confs_find_cmd.results
+        | map(attribute='stdout_lines')
+        | map('first')
+        | map('trim')
+        | map('basename')
+        | map('regex_replace', '\.conf$', '.conf.add')
+        | sort
+        | list }}
+    _dns_sdn_links_found: >-
+      {{ _dns_slinks_find_cmd.stdout_lines
+        | map('trim')
+        | map('basename')
+        | sort
+        | list }}
+
+- name: Generate creation and deletion list
+  ansible.builtin.set_fact:
+    _dns_sdn_links_create: >
+      {{ _dns_sdn_links_wanted
+        | difference(_dns_sdn_links_found)
+        | sort
+        | list }}
+    _dns_sdn_links_delete: >
+      {{ _dns_sdn_links_found
+        | difference(_dns_sdn_links_wanted)
+        | sort
+        | list }}
+
+- name: Summarize symbolic link changes
+  ansible.builtin.debug:
+    msg: |
+      wanted: {{ _dns_sdn_links_wanted }}
+      found:  {{ _dns_sdn_links_found }}
+      to be created: {{ _dns_sdn_links_create }}
+      to be deleted: {{ _dns_sdn_links_delete }}
+  changed_when: _dns_sdn_links_wanted != _dns_sdn_links_found
+  when: ansible_check_mode
+
+- name: Create new symbolic links
+  loop: "{{ _dns_sdn_links_create }}"
+  ansible.builtin.raw: >-
+    ln -s "{{ _dns_conf_path }}" "{{ _dns_conf_dir }}/{{ item }}"
+  changed_when: true
+  when: _dns_sdn_links_create | length > 0
+
+- name: Delete unwanted symbolic links
+  loop: "{{ _dns_sdn_links_delete }}"
+  ansible.builtin.raw: >-
+    rm "{{ _dns_conf_dir }}/{{ item }}"
+  changed_when: true
+  when: _dns_sdn_links_delete | length > 0

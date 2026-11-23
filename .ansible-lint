@@ -1,0 +1,6 @@
+---
+skip_list:
+  - name[casing]
+  - no-handler
+  - var-naming[no-role-prefix]
+  - command-instead-of-shell
