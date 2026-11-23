@@ -1,0 +1,30 @@
+---
+# Unexposing bridges and cleaning up their links.
+# prepare: links br52, br53 and br54 with the role, plus a stale link for a
+#          dnsmasq instance that no longer exists.
+# converge: keeps only br53.
+# verify: checks the links, then unexposes all bridges.
+prerun: false
+role_name_check: 1
+driver:
+  name: podman
+platforms:
+  - name: asuswrt-dns-cleanup
+    image: docker.io/library/alpine:3.22
+    pre_build_image: true  # building would install Python into the image
+    command: tail -f /dev/null
+    groups:
+      - routers
+provisioner:
+  name: ansible
+scenario:
+  test_sequence:
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - check
+    - converge
+    - idempotence
+    - verify
+    - destroy

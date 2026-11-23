@@ -1,0 +1,7 @@
+---
+- name: Run pending handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Reset dnsmasq restart log
+  ansible.builtin.raw: ": > /tmp/service.log"
+  changed_when: true

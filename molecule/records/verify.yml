@@ -1,0 +1,58 @@
+---
+- name: Verify
+  hosts: routers
+  gather_facts: false
+  module_defaults:
+    ansible.builtin.raw:  # containers.podman.podman execs without a shell
+      executable: /bin/sh
+  tasks:
+    - name: Read router state
+      ansible.builtin.include_tasks: ../resources/tasks/read_state.yml
+
+    - name: Check records were replaced and dnsmasq restarted once
+      ansible.builtin.assert:
+        that:
+          - _dns_test_conf_cmd.stdout_lines == _dns_test_conf_wanted
+          - _dns_test_service_cmd.stdout_lines == ['restart_dnsmasq']
+      vars:
+        _dns_test_conf_wanted:
+          - "address=/apps.internal/infra.internal/10.0.0.1"
+          - "address=/new.internal/10.0.0.2"
+          - "address=/nas.lan/10.0.0.10"
+
+    - name: Remove all records
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir | dirname | dirname }}"
+      vars:
+        dns_entries: []
+        dns_inventory_groups: []
+
+    - name: Reset restarts
+      ansible.builtin.include_tasks: ../resources/tasks/reset_restarts.yml
+
+    - name: Read router state
+      ansible.builtin.include_tasks: ../resources/tasks/read_state.yml
+
+    - name: Check all records were removed
+      ansible.builtin.assert:
+        that:
+          - _dns_test_conf_cmd.stdout | trim == ""
+
+    - name: Remove all records again
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir | dirname | dirname }}"
+      vars:
+        dns_entries: []
+        dns_inventory_groups: []
+
+    - name: Run pending handlers
+      ansible.builtin.meta: flush_handlers
+
+    - name: Read router state
+      ansible.builtin.include_tasks: ../resources/tasks/read_state.yml
+
+    - name: Check removing all records is idempotent
+      ansible.builtin.assert:
+        that:
+          - _dns_test_service_cmd.stdout_lines == []
+        fail_msg: "second run with no records restarted dnsmasq"

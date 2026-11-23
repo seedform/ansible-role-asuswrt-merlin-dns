@@ -1,0 +1,3 @@
+---
+- name: Fake router
+  ansible.builtin.import_playbook: ../resources/fake_router.yml

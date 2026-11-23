@@ -1,0 +1,39 @@
+---
+- name: Fake router
+  ansible.builtin.import_playbook: ../resources/fake_router.yml
+
+- name: Deploy initial records
+  hosts: routers
+  gather_facts: false
+  module_defaults:
+    ansible.builtin.raw:  # containers.podman.podman execs without a shell
+      executable: /bin/sh
+  tasks:
+    - name: Apply role with records that converge changes or removes
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir | dirname | dirname }}"
+      vars:
+        dns_network_domain: lan
+        dns_inventory_groups: [site1, site2]
+        dns_entries:
+          - domain_names: [old.internal]
+            target: "10.0.0.9"
+          - domain_names: [apps.internal]
+            target: "10.0.0.1"
+
+    - name: Reset restarts
+      ansible.builtin.include_tasks: ../resources/tasks/reset_restarts.yml
+
+    - name: Read router state
+      ansible.builtin.include_tasks: ../resources/tasks/read_state.yml
+
+    - name: Check initial records
+      ansible.builtin.assert:
+        that:
+          - _dns_test_conf_cmd.stdout_lines == _dns_test_conf_wanted
+      vars:
+        _dns_test_conf_wanted:
+          - "address=/old.internal/10.0.0.9"
+          - "address=/apps.internal/10.0.0.1"
+          - "address=/nas.lan/10.0.0.10"
+          - "address=/printer.lan/10.0.0.11"
