@@ -1,0 +1,27 @@
+---
+# Turns a plain Alpine container (BusyBox, no Python) into a stand-in for an
+# Asuswrt-Merlin router: JFFS config dir, one dnsmasq instance per bridge and
+# a `service` stub that logs restarts to /tmp/service.log.
+- name: Fake an Asuswrt-Merlin router
+  hosts: routers
+  gather_facts: false
+  module_defaults:
+    ansible.builtin.raw:  # containers.podman.podman execs without a shell
+      executable: /bin/sh
+  tasks:
+    - name: Create JFFS, dnsmasq instances and service stub
+      ansible.builtin.raw: |
+        mkdir -p /jffs/configs
+        printf 'interface=br0\n' > /etc/dnsmasq.conf
+        # <index>:<bridge>; br520 checks that br52 is matched exactly
+        for i in 2:br52 3:br53 4:br54 5:br520; do
+          printf 'pid-file=/var/run/dnsmasq-%s.pid\ninterface=%s\n' \
+            "${i%%:*}" "${i#*:}" > "/etc/dnsmasq-${i%%:*}.conf"
+        done
+        cat <<'EOF' > /usr/local/bin/service
+        #!/bin/sh
+        echo "$*" >> /tmp/service.log
+        EOF
+        chmod +x /usr/local/bin/service
+        : > /tmp/service.log
+      changed_when: true

@@ -1,0 +1,41 @@
+---
+# Setting and removing DNS records.
+# prepare: deploys an initial set of records with the role.
+# converge: replaces them (adds, changes and drops records).
+# verify: checks the result, then removes all records.
+prerun: false
+role_name_check: 1
+driver:
+  name: podman
+platforms:
+  - name: asuswrt-dns-records
+    image: docker.io/library/alpine:3.22
+    pre_build_image: true  # building would install Python into the image
+    command: tail -f /dev/null
+    groups:
+      - routers
+provisioner:
+  name: ansible
+  inventory:
+    hosts:
+      all:
+        children:
+          site1:
+            hosts:
+              nas:
+                ansible_host: "10.0.0.10"
+          site2:
+            hosts:
+              printer:
+                ansible_host: "10.0.0.11"
+scenario:
+  test_sequence:
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - check
+    - converge
+    - idempotence
+    - verify
+    - destroy

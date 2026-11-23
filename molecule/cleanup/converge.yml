@@ -1,0 +1,16 @@
+---
+- name: Converge
+  hosts: routers
+  gather_facts: false
+  module_defaults:
+    ansible.builtin.raw:  # containers.podman.podman execs without a shell
+      executable: /bin/sh
+  tasks:
+    - name: Unexpose all bridges but br53
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir | dirname | dirname }}"
+      vars:
+        dns_add_bridges: [br53]
+        dns_entries:
+          - domain_names: [apps.internal]
+            target: "10.0.0.1"

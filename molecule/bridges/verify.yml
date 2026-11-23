@@ -1,0 +1,50 @@
+---
+- name: Verify
+  hosts: routers
+  gather_facts: false
+  module_defaults:
+    ansible.builtin.raw:  # containers.podman.podman execs without a shell
+      executable: /bin/sh
+  tasks:
+    - name: Read router state
+      ansible.builtin.include_tasks: ../resources/tasks/read_state.yml
+
+    - name: Check only the selected bridges are linked
+      ansible.builtin.assert:
+        that:
+          - _dns_test_links_cmd.stdout_lines == _dns_test_links_wanted
+          - _dns_test_conf_cmd.stdout_lines == ['address=/apps.internal/10.0.0.1']
+          - _dns_test_service_cmd.stdout_lines == ['restart_dnsmasq']
+      vars:
+        _dns_test_links_wanted:
+          - "dnsmasq-2.conf.add -> /jffs/configs/dnsmasq.conf.add"
+          - "dnsmasq-4.conf.add -> /jffs/configs/dnsmasq.conf.add"
+
+    - name: Expose records on a bridge without a dnsmasq instance
+      block:
+        - name: Apply role with an unknown bridge
+          ansible.builtin.include_role:
+            name: "{{ playbook_dir | dirname | dirname }}"
+          vars:
+            dns_add_bridges: [br52, br99]
+            dns_entries:
+              - domain_names: [apps.internal]
+                target: "10.0.0.1"
+
+        - name: Unknown bridge was accepted
+          ansible.builtin.fail:
+            msg: "role should fail when a bridge has no dnsmasq instance"
+      rescue:
+        - name: Check the bridge lookup failed
+          ansible.builtin.assert:
+            that:
+              - ansible_failed_task.name
+                == "Find each additional bridge's config file"
+
+    - name: Read router state
+      ansible.builtin.include_tasks: ../resources/tasks/read_state.yml
+
+    - name: Check the failed run left the links untouched
+      ansible.builtin.assert:
+        that:
+          - _dns_test_links_cmd.stdout_lines | length == 2

@@ -1,0 +1,20 @@
+---
+# Registers the router state that scenarios assert on:
+# _dns_test_conf_cmd, _dns_test_links_cmd and _dns_test_service_cmd.
+- name: Read deployed config
+  ansible.builtin.raw: cat /jffs/configs/dnsmasq.conf.add
+  register: _dns_test_conf_cmd
+  changed_when: false
+
+- name: Read bridge symbolic links  # prints "<link> -> <target>" per link
+  ansible.builtin.raw: >-
+    cd /jffs/configs &&
+    find . -name 'dnsmasq-*.conf.add' | sort |
+    while read -r f; do echo "${f#./} -> $(readlink "$f")"; done
+  register: _dns_test_links_cmd
+  changed_when: false
+
+- name: Read dnsmasq restarts
+  ansible.builtin.raw: cat /tmp/service.log
+  register: _dns_test_service_cmd
+  changed_when: false

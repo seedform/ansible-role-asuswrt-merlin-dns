@@ -1,0 +1,19 @@
+---
+- name: Converge
+  hosts: routers
+  gather_facts: false
+  module_defaults:
+    ansible.builtin.raw:  # containers.podman.podman execs without a shell
+      executable: /bin/sh
+  tasks:
+    - name: Add, change and remove records
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir | dirname | dirname }}"
+      vars:
+        dns_network_domain: lan
+        dns_inventory_groups: [site1]  # drops printer.lan from site2
+        dns_entries:  # drops old.internal
+          - domain_names: [apps.internal, infra.internal]
+            target: "10.0.0.1"
+          - domain_names: [new.internal]
+            target: "10.0.0.2"

@@ -1,0 +1,43 @@
+---
+- name: Verify
+  hosts: routers
+  gather_facts: false
+  module_defaults:
+    ansible.builtin.raw:  # containers.podman.podman execs without a shell
+      executable: /bin/sh
+  tasks:
+    - name: Read router state
+      ansible.builtin.include_tasks: ../resources/tasks/read_state.yml
+
+    - name: Check unwanted and stale links were removed
+      ansible.builtin.assert:
+        that:
+          - _dns_test_links_cmd.stdout_lines == _dns_test_links_wanted
+          - _dns_test_conf_cmd.stdout_lines == ['address=/apps.internal/10.0.0.1']
+          - _dns_test_service_cmd.stdout_lines == ['restart_dnsmasq']
+      vars:
+        _dns_test_links_wanted:
+          - "dnsmasq-3.conf.add -> /jffs/configs/dnsmasq.conf.add"
+
+    - name: Unexpose all bridges
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir | dirname | dirname }}"
+      vars:
+        dns_add_bridges: []
+        dns_entries:
+          - domain_names: [apps.internal]
+            target: "10.0.0.1"
+
+    - name: Run pending handlers
+      ansible.builtin.meta: flush_handlers
+
+    - name: Read router state
+      ansible.builtin.include_tasks: ../resources/tasks/read_state.yml
+
+    - name: Check all links were removed and the config kept
+      ansible.builtin.assert:
+        that:
+          - _dns_test_links_cmd.stdout_lines == []
+          - _dns_test_conf_cmd.stdout_lines == ['address=/apps.internal/10.0.0.1']
+          - _dns_test_service_cmd.stdout_lines
+            == ['restart_dnsmasq', 'restart_dnsmasq']

@@ -1,0 +1,28 @@
+---
+# Exposing the DNS records to additional bridges/VLANs.
+# converge: links the config into br52's and br54's dnsmasq instances.
+# verify: checks the links, then that an unknown bridge fails the run.
+prerun: false
+role_name_check: 1
+driver:
+  name: podman
+platforms:
+  - name: asuswrt-dns-bridges
+    image: docker.io/library/alpine:3.22
+    pre_build_image: true  # building would install Python into the image
+    command: tail -f /dev/null
+    groups:
+      - routers
+provisioner:
+  name: ansible
+scenario:
+  test_sequence:
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - check
+    - converge
+    - idempotence
+    - verify
+    - destroy
